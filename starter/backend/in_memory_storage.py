@@ -13,10 +13,15 @@ class InMemoryStorage:
         self._orders[order_id] = order_data.copy()
 
     def get_order(self, order_id: str):
-        return self._orders.get(order_id, {}).copy() if self._orders.get(order_id) else None
+        order = self._orders.get(order_id)
+        return order.copy() if order else None
 
     def get_all_orders(self):
         return {k: v.copy() for k, v in self._orders.items()}
+
+    def delete_order(self, order_id: str):
+        # Deleting an ID that isn't stored is a no-op.
+        self._orders.pop(order_id, None)
 
     def clear(self):
         self._orders = {}
