@@ -6,10 +6,14 @@ from werkzeug.exceptions import BadRequest, HTTPException
 from backend.in_memory_storage import InMemoryStorage
 from backend.order_tracker import (
     DuplicateOrderError, OrderError, OrderNotFoundError, OrderTracker)
+from backend.sample_orders import load_sample_orders
 
 app = Flask(__name__, static_folder='../frontend')
 in_memory_storage = InMemoryStorage()
 order_tracker = OrderTracker(in_memory_storage)
+# Start with a few sample orders so the page isn't empty. The API tests clear
+# storage before each test, so these never affect test results.
+load_sample_orders(order_tracker)
 
 REQUIRED_ORDER_FIELDS = ("order_id", "item_name", "quantity", "customer_id")
 LIST_FILTERS = ("status", "customer_id")

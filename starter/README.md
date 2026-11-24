@@ -14,11 +14,13 @@ Writing the tests first meant every red test told me exactly what to build next 
 │   ├── in_memory_storage.py    # dict-backed storage (resets on restart)
 │   ├── order_tracker.py        # business logic, no Flask code
 │   ├── requirements.txt
+│   ├── sample_orders.py        # six demo orders loaded at startup
 │   └── tests
 │       ├── __init__.py
 │       ├── test_api.py             # integration tests through Flask
 │       ├── test_in_memory_storage.py
-│       └── test_order_tracker.py   # unit tests with mocked storage
+│       ├── test_order_tracker.py   # unit tests with mocked storage
+│       └── test_sample_orders.py
 ├── frontend
 │   ├── css
 │   │   └── style.css
@@ -38,9 +40,11 @@ Run every command from this `starter/` directory. If you run `pytest` from insid
 ```bash
 python3 -m venv backend/venv && source backend/venv/bin/activate
 pip install -r backend/requirements.txt
-pytest                      # 93 tests: 58 OrderTracker, 3 storage, 32 API
+pytest                      # 96 tests: 58 OrderTracker, 32 API, 3 storage, 3 samples
 python -m backend.app       # http://127.0.0.1:5000/
 ```
+
+The app starts with six sample orders (`ORD1001`–`ORD1006`, defined in `backend/sample_orders.py`), so the page isn't empty. Storage is in memory, so anything you add disappears on restart, and the app comes back with the same six samples.
 
 If port 5000 is in use (on macOS, AirPlay Receiver often takes it), choose another port: `PORT=8000 python -m backend.app`.
 
