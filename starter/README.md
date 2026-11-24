@@ -2,11 +2,7 @@
 
 ## Reflection
 
-<!-- Draft: put this in your own words before submitting. -->
-
-- **Design decision:** `OrderTracker` holds every business rule and contains no Flask code. It raises `OrderError` (a `ValueError`) or one of its subclasses, `DuplicateOrderError` and `OrderNotFoundError`. A single Flask error handler maps these to 400, 409 and 404, always with an `{"error": ...}` body. Each route stays a few lines long and never parses error messages. The cost is a small set of exception classes to maintain.
-- **Testing insight:** `test_get_order_api_blank_id_returns_400` caught a gap. Once `get_order_by_id` started rejecting empty IDs, the GET route let that error escape as a 500. A unit test checking that the stored dict isn't modified also led me to copy the order before saving in `update_order_status`.
-- **Next step:** Replace the in-memory store with SQLite behind the same four storage methods, so orders survive a restart. Then add delete and the `delivered`/`cancelled` statuses to the frontend.
+Writing the tests first meant every red test told me exactly what to build next - no guessing. I kept all the rules in `OrderTracker` with no Flask code, so each route just calls one method and a single error handler turns errors into 400, 404 or 409. The blank-ID API test caught a real bug - once I started rejecting empty IDs, the GET route was throwing a 500 instead of a 400. Next I'd swap the in-memory store for SQLite so orders survive a restart, and add delete to the frontend.
 
 ## Project structure
 

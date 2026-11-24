@@ -1,4 +1,6 @@
+// Runs once the page has loaded and connects the forms and buttons to the API.
 document.addEventListener('DOMContentLoaded', () => {
+    // Grab the page elements we need.
     const messageContainer = document.getElementById('message-container');
     const addOrderForm = document.getElementById('add-order-form');
     const getOrderForm = document.getElementById('get-order-form');
@@ -8,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterStatusSelect = document.getElementById('filter-status');
     const ordersTableBody = document.getElementById('orders-table-body');
 
+    // Shows a green (success) or red (error) message that hides after 5 seconds.
     function showMessage(message, type) {
         messageContainer.textContent = message;
         messageContainer.className = `message-box ${type === 'success' ? 'message-success' : 'message-error'}`;
@@ -15,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => messageContainer.classList.add('hidden'), 5000);
     }
 
+    // Fills the orders table, or shows "No orders to display." if the list is empty.
     function renderOrdersTable(orders) {
         ordersTableBody.innerHTML = '';
         if (orders.length === 0) {
@@ -28,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Loads orders from the API (only one status if given) and shows them in the table.
     async function fetchAndRenderOrders(status = '') {
         try {
             const url = status ? `/api/orders?status=${status}` : '/api/orders';
@@ -38,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { showMessage(`Failed to load orders: ${error.message}`, 'error'); renderOrdersTable([]); }
     }
 
+    // "Add New Order" form: sends the order to POST /api/orders, then refreshes the table.
     addOrderForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(addOrderForm);
@@ -53,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { showMessage(`Failed to add order: ${error.message}`, 'error'); }
     });
 
+    // "Get Order Details" form: fetches GET /api/orders/<id> and shows the order's JSON.
     getOrderForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const orderId = document.getElementById('get-order-id').value.trim();
@@ -67,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { showMessage(`Failed to get order: ${error.message}`, 'error'); }
     });
 
+    // "Update Order Status" form: sends PUT /api/orders/<id>/status, then refreshes the table.
     updateStatusForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const orderId = document.getElementById('update-order-id').value.trim();
@@ -82,7 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { showMessage(`Failed to update status: ${error.message}`, 'error'); }
     });
 
+    // "Refresh" button: clears the status filter and reloads every order.
     listAllOrdersBtn.addEventListener('click', () => { filterStatusSelect.value = ''; fetchAndRenderOrders(); });
+    // Status filter dropdown: reloads the table with only orders in that status.
     filterStatusSelect.addEventListener('change', (e) => fetchAndRenderOrders(e.target.value));
+    // Load the orders table as soon as the page opens.
     fetchAndRenderOrders();
 });

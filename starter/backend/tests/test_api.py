@@ -54,6 +54,14 @@ def test_list_orders_by_status_api_matching(client):
 
 
 # --- Additional tests: error paths and edge cases ---
+# The six tests above are Udacity's provided tests (left unchanged). They
+# check create (201), get (200), get missing (404), update status (200),
+# list all (200) and filter by status (200).
+#
+# Everything below also goes through Flask's test client, so each test runs
+# the real route, OrderTracker and in-memory storage together.
+#
+# VALID_ORDER is a valid order body that the tests below reuse.
 VALID_ORDER = {
     "order_id": "ERR001", "item_name": "Item", "quantity": 1,
     "customer_id": "C1",
@@ -66,12 +74,14 @@ def put_status(client, order_id, new_status):
                       json={"new_status": new_status})
 
 
+# Creating an order returns all its fields, with status "pending".
 def test_add_order_api_returns_full_order_with_default_status(client):
     response = client.post('/api/orders', json=VALID_ORDER)
     assert response.status_code == 201
     assert response.json == {**VALID_ORDER, "status": "pending"}
 
 
+# Posting the same order ID twice gives 409 Conflict.
 def test_add_order_api_duplicate_returns_409(client):
     client.post('/api/orders', json=VALID_ORDER)
     response = client.post('/api/orders', json=VALID_ORDER)
@@ -79,6 +89,7 @@ def test_add_order_api_duplicate_returns_409(client):
     assert "already exists" in response.json['error']
 
 
+# Leaving out any required field gives 400, and the error names the field.
 @pytest.mark.parametrize(
     "missing_field", ["order_id", "item_name", "quantity", "customer_id"])
 def test_add_order_api_missing_field_returns_400(client, missing_field):
@@ -88,6 +99,7 @@ def test_add_order_api_missing_field_returns_400(client, missing_field):
     assert missing_field in response.json['error']
 
 
+# A quantity of 0 is rejected with 400.
 def test_add_order_api_invalid_quantity_returns_400(client):
     payload = {**VALID_ORDER, "quantity": 0}
     response = client.post('/api/orders', json=payload)
@@ -95,6 +107,7 @@ def test_add_order_api_invalid_quantity_returns_400(client):
     assert "Quantity" in response.json['error']
 
 
+# A request body that isn't JSON is rejected with 400.
 def test_add_order_api_non_json_body_returns_400(client):
     response = client.post('/api/orders', data="not json",
                            content_type="text/plain")
@@ -102,17 +115,20 @@ def test_add_order_api_non_json_body_returns_400(client):
     assert "error" in response.json
 
 
+# The 404 error message names the missing order ID.
 def test_get_order_api_not_found_returns_error_message(client):
     response = client.get('/api/orders/NONEXISTENT')
     assert "NONEXISTENT" in response.json['error']
 
 
+# A blank (space-only) ID gives 400, not a server error.
 def test_get_order_api_blank_id_returns_400(client):
     response = client.get('/api/orders/%20')
     assert response.status_code == 400
     assert "order_id" in response.json['error']
 
 
+# A status update is still there when the order is fetched again.
 def test_update_order_status_api_persists_change(client):
     client.post('/api/orders', json=VALID_ORDER)
     put_status(client, "ERR001", "processing")
@@ -120,6 +136,7 @@ def test_update_order_status_api_persists_change(client):
     assert response.json['status'] == "processing"
 
 
+# "delivered" is a valid status to update to.
 def test_update_order_status_api_accepts_delivered(client):
     client.post('/api/orders', json=VALID_ORDER)
     response = put_status(client, "ERR001", "delivered")
@@ -127,12 +144,14 @@ def test_update_order_status_api_accepts_delivered(client):
     assert response.json['status'] == "delivered"
 
 
+# Updating an order that doesn't exist gives 404.
 def test_update_order_status_api_not_found_returns_404(client):
     response = put_status(client, "NONEXISTENT", "shipped")
     assert response.status_code == 404
     assert "not found" in response.json['error']
 
 
+# An unknown status gives 400.
 def test_update_order_status_api_invalid_status_returns_400(client):
     client.post('/api/orders', json=VALID_ORDER)
     response = put_status(client, "ERR001", "lost")
@@ -140,6 +159,7 @@ def test_update_order_status_api_invalid_status_returns_400(client):
     assert "Invalid status" in response.json['error']
 
 
+# A status update without "new_status" in the body gives 400.
 def test_update_order_status_api_missing_new_status_returns_400(client):
     client.post('/api/orders', json=VALID_ORDER)
     response = client.put('/api/orders/ERR001/status', json={})
@@ -147,12 +167,14 @@ def test_update_order_status_api_missing_new_status_returns_400(client):
     assert "new_status" in response.json['error']
 
 
+# With no orders, the list endpoint returns an empty list.
 def test_list_orders_api_empty_returns_empty_list(client):
     response = client.get('/api/orders')
     assert response.status_code == 200
     assert response.json == []
 
 
+# An unknown or empty ?status= filter gives 400.
 @pytest.mark.parametrize("query", ["status=bogus", "status="])
 def test_list_orders_api_empty_or_invalid_status_returns_400(client, query):
     response = client.get(f'/api/orders?{query}')
@@ -161,6 +183,7 @@ def test_list_orders_api_empty_or_invalid_status_returns_400(client, query):
 
 
 # --- Filtering by customer: GET /api/orders?customer_id=<id> ---
+# Orders for two customers, as (order_id, customer_id, status).
 SEED_ORDERS = [
     ("F1", "C1", "pending"),
     ("F2", "C2", "pending"),
@@ -183,12 +206,14 @@ def order_ids(response):
     return sorted(order["order_id"] for order in response.json)
 
 
+# ?customer_id= returns only that customer's orders.
 def test_list_orders_api_filters_by_customer(seeded_client):
     response = seeded_client.get('/api/orders?customer_id=C2')
     assert response.status_code == 200
     assert order_ids(response) == ["F2", "F3"]
 
 
+# Customer and status filters can be used together.
 def test_list_orders_api_combines_customer_and_status(seeded_client):
     url = '/api/orders?customer_id=C2&status=pending'
     response = seeded_client.get(url)
@@ -196,6 +221,7 @@ def test_list_orders_api_combines_customer_and_status(seeded_client):
     assert order_ids(response) == ["F2"]
 
 
+# An empty ?customer_id= filter gives 400.
 def test_list_orders_api_empty_customer_filter_returns_400(seeded_client):
     response = seeded_client.get('/api/orders?customer_id=')
     assert response.status_code == 400
@@ -203,6 +229,7 @@ def test_list_orders_api_empty_customer_filter_returns_400(seeded_client):
 
 
 # --- DELETE /api/orders/<order_id> ---
+# Deleting an order returns the order that was removed.
 def test_delete_order_api_returns_deleted_order(client):
     client.post('/api/orders', json=VALID_ORDER)
     response = client.delete('/api/orders/ERR001')
@@ -210,6 +237,7 @@ def test_delete_order_api_returns_deleted_order(client):
     assert response.json == {**VALID_ORDER, "status": "pending"}
 
 
+# After deleting, the order can't be fetched or listed.
 def test_delete_order_api_removes_the_order(client):
     client.post('/api/orders', json=VALID_ORDER)
     client.delete('/api/orders/ERR001')
@@ -217,6 +245,7 @@ def test_delete_order_api_removes_the_order(client):
     assert client.get('/api/orders').json == []
 
 
+# Deleting an order that doesn't exist gives 404.
 def test_delete_order_api_not_found_returns_404(client):
     response = client.delete('/api/orders/NONEXISTENT')
     assert response.status_code == 404
@@ -224,12 +253,14 @@ def test_delete_order_api_not_found_returns_404(client):
 
 
 # --- Consistent JSON errors from the central error handlers ---
+# An unsupported HTTP method gets a JSON error, not an HTML page.
 def test_unsupported_method_returns_json_405(client):
     response = client.patch('/api/orders/ERR001')
     assert response.status_code == 405
     assert "error" in response.json
 
 
+# An unknown /api/ address gets a JSON 404, not an HTML page.
 def test_unknown_api_route_returns_json_404(client):
     response = client.get('/api/unknown')
     assert response.status_code == 404
